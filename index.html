@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sorter Visual Lab</title>
+    <meta
+      name="description"
+      content="Paste JavaScript sorting algorithms and watch them animate with sound."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="background-grid" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="panel hero-panel">
+        <div>
+          <p class="eyebrow">sorter.kmshri.com</p>
+          <h1 id="algoTitle">Sort Visual Lab</h1>
+          <p id="algoDescription" class="hero-description">
+            Paste a JavaScript sorting algorithm, run it in a browser worker sandbox, and
+            watch the array animate with sound FX.
+          </p>
+        </div>
+        <div class="complexity-strip" aria-label="algorithm complexity info">
+          <div class="complexity-chip">
+            <span>Time</span>
+            <strong id="timeComplexity">Varies</strong>
+          </div>
+          <div class="complexity-chip">
+            <span>Space</span>
+            <strong id="spaceComplexity">Varies</strong>
+          </div>
+          <div class="complexity-chip">
+            <span>Mode</span>
+            <strong id="traceMode">Worker + Proxy Trace</strong>
+          </div>
+        </div>
+      </header>
+
+      <section class="workspace-grid" aria-label="sort visualizer workspace">
+        <section class="panel visual-panel" aria-labelledby="visualizerHeading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Visualizer</p>
+              <h2 id="visualizerHeading">Array Playback</h2>
+            </div>
+            <div class="meta-row">
+              <span id="statusText" class="status-pill">Idle</span>
+              <span id="opsMeta" class="meta-pill">No trace yet</span>
+            </div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="sortCanvas" aria-label="Sorting animation canvas"></canvas>
+          </div>
+          <div class="legend-row" aria-label="bar color legend">
+            <div class="legend-item"><span class="swatch swatch-default"></span>Idle bars</div>
+            <div class="legend-item"><span class="swatch swatch-read"></span>Reads</div>
+            <div class="legend-item"><span class="swatch swatch-write"></span>Writes / swaps</div>
+            <div class="legend-item"><span class="swatch swatch-done"></span>Sorted finish</div>
+          </div>
+          <div id="traceInfo" class="trace-info">
+            Load an example or paste code, then click <strong>Trace + Play</strong>.
+          </div>
+        </section>
+
+        <section class="panel controls-panel" aria-labelledby="controlsHeading">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Controls</p>
+              <h2 id="controlsHeading">Runner</h2>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="presetSelect">Preset</label>
+            <div class="inline-controls">
+              <select id="presetSelect"></select>
+              <button id="loadPresetBtn" class="btn btn-secondary" type="button">Load</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="arrayInput">Array (CSV or JSON)</label>
+            <textarea id="arrayInput" class="mini-editor" rows="3" spellcheck="false"></textarea>
+            <div class="inline-controls tight">
+              <label for="sizeInput" class="inline-label">Random size</label>
+              <input id="sizeInput" type="range" min="8" max="120" step="1" value="32" />
+              <span id="sizeValue" class="inline-value">32</span>
+              <button id="randomizeBtn" class="btn btn-ghost" type="button">Randomize</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="entryInput">Entry call (what to execute after your functions are defined)</label>
+            <input
+              id="entryInput"
+              class="mono-input"
+              type="text"
+              spellcheck="false"
+              value="quickSort(arr, 0, arr.length - 1)"
+            />
+          </div>
+
+          <div class="control-group split-grid">
+            <div>
+              <label for="speedInput">Playback speed</label>
+              <div class="inline-controls tight">
+                <input id="speedInput" type="range" min="30" max="2400" step="10" value="520" />
+                <span id="speedValue" class="inline-value">520 ops/s</span>
+              </div>
+            </div>
+            <div>
+              <label for="volumeInput">Sound FX</label>
+              <div class="inline-controls tight">
+                <input id="volumeInput" type="range" min="0" max="100" step="1" value="24" />
+                <span id="volumeValue" class="inline-value">24%</span>
+                <label class="switch" for="soundToggle">
+                  <input id="soundToggle" type="checkbox" checked />
+                  <span>On</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="button-grid">
+            <button id="traceBtn" class="btn btn-primary" type="button">Trace + Play</button>
+            <button id="playPauseBtn" class="btn btn-secondary" type="button">Play</button>
+            <button id="stepBtn" class="btn btn-ghost" type="button">Step</button>
+            <button id="resetBtn" class="btn btn-ghost" type="button">Reset</button>
+          </div>
+
+          <div id="errorBox" class="error-box is-hidden" role="alert"></div>
+        </section>
+
+        <section class="panel editor-panel" aria-labelledby="editorHeading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Code</p>
+              <h2 id="editorHeading">JavaScript Sort Input</h2>
+            </div>
+            <div class="meta-row">
+              <span class="meta-pill">Ctrl/Cmd + Enter: Trace</span>
+            </div>
+          </div>
+          <div class="editor-frame">
+            <pre id="lineNumbers" class="line-numbers" aria-hidden="true">1</pre>
+            <textarea
+              id="codeInput"
+              class="code-editor"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              autocorrect="off"
+            ></textarea>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
