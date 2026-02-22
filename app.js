@@ -841,6 +841,8 @@ function drawRangeOverlays(ctx, layout) {
   if (!state.rangeMarks.length || !layout.bars.length) return;
   const colorByLabel = {
     partition: 'rgba(245, 230, 26, 0.08)',
+    'left-part': 'rgba(19, 216, 255, 0.08)',
+    'right-part': 'rgba(255, 75, 120, 0.08)',
     merge: 'rgba(19, 216, 255, 0.08)',
     heap: 'rgba(140, 125, 255, 0.08)',
     default: 'rgba(255, 255, 255, 0.05)',
@@ -1225,6 +1227,8 @@ function buildExamples() {
 
   const split = partition(arr, low, high);
   helpers.mark(split, 'split');
+  if (split >= low) helpers.range(low, split, 'left-part');
+  if (split + 1 <= high) helpers.range(split + 1, high, 'right-part');
 
   quickSort(arr, low, split);
   quickSort(arr, split + 1, high);
