@@ -621,21 +621,29 @@ function resizeMazeCanvasIfNeeded() {
   const width = Math.max(1, Math.round(rect.width));
   const height = Math.max(1, Math.round(rect.height));
   const dpr = window.devicePixelRatio || 1;
-  if (width === mazeState.canvasSize.width && height === mazeState.canvasSize.height && dpr === mazeState.canvasSize.dpr) {
-    return;
-  }
-  mazeState.canvasSize = { width, height, dpr };
-  mazeRefs.canvas.width = Math.round(width * dpr);
-  mazeRefs.canvas.height = Math.round(height * dpr);
+  const canvasChanged =
+    width !== mazeState.canvasSize.width || height !== mazeState.canvasSize.height || dpr !== mazeState.canvasSize.dpr;
 
-  const cell = Math.floor(Math.min(width / mazeState.cols, height / mazeState.rows));
-  const safeCell = Math.max(4, cell);
+  if (canvasChanged) {
+    mazeState.canvasSize = { width, height, dpr };
+    mazeRefs.canvas.width = Math.round(width * dpr);
+    mazeRefs.canvas.height = Math.round(height * dpr);
+  }
+
+  // Always recalc layout because rows/cols can change even when canvas size is unchanged.
+  const hudReserved = 60;
+  const edgePad = 10;
+  const availableW = Math.max(1, width - edgePad * 2);
+  const availableH = Math.max(1, height - hudReserved - edgePad);
+  const cell = Math.floor(Math.min(availableW / mazeState.cols, availableH / mazeState.rows));
+  const safeCell = Math.max(2, cell);
   const gridPx = safeCell * mazeState.cols;
   const gridPy = safeCell * mazeState.rows;
+  const freeY = Math.max(0, height - hudReserved - gridPy);
   mazeState.layout = {
     cell: safeCell,
     originX: Math.floor((width - gridPx) / 2),
-    originY: Math.floor((height - gridPy) / 2),
+    originY: Math.floor(hudReserved + freeY / 2),
     gridPx,
     gridPy,
   };

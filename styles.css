@@ -285,6 +285,48 @@ body {
   font-size: 0.9rem;
 }
 
+.role-readout {
+  margin-top: 10px;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
+    rgba(5, 7, 11, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+}
+
+.role-readout.is-empty {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  font-family: var(--mono);
+  font-size: 0.77rem;
+  line-height: 1;
+}
+
+.role-chip-label {
+  font-weight: 700;
+}
+
+.role-chip-meta {
+  color: var(--muted);
+}
+
 .control-group {
   margin-top: 12px;
 }
@@ -304,6 +346,10 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.inline-controls.wrap {
+  flex-wrap: wrap;
 }
 
 .inline-controls.tight {
@@ -427,6 +473,11 @@ select:focus,
 
 .switch input {
   accent-color: var(--accent);
+}
+
+.helper-note {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 input[type="range"] {

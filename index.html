@@ -72,6 +72,7 @@
             <div class="legend-item"><span class="swatch swatch-pivot"></span>Pivot / pointers</div>
             <div class="legend-item"><span class="swatch swatch-done"></span>Sorted finish</div>
           </div>
+          <div id="roleReadout" class="role-readout" aria-live="polite"></div>
           <div id="traceInfo" class="trace-info">
             Load an example or paste code, then click <strong>Trace + Play</strong>.
           </div>
@@ -119,8 +120,8 @@
             <div>
               <label for="speedInput">Playback speed</label>
               <div class="inline-controls tight">
-                <input id="speedInput" type="range" min="30" max="2400" step="10" value="520" />
-                <span id="speedValue" class="inline-value">520 ops/s</span>
+                <input id="speedInput" type="range" min="0" max="100" step="1" value="26" />
+                <span id="speedValue" class="inline-value">12 ops/s</span>
               </div>
             </div>
             <div>
@@ -133,6 +134,16 @@
                   <span>On</span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="inline-controls tight wrap">
+              <label class="switch" for="readFlashToggle">
+                <input id="readFlashToggle" type="checkbox" />
+                <span>Show read flashes</span>
+              </label>
+              <span class="helper-note">Off by default for clearer pivot/pointer tracking</span>
             </div>
           </div>
 

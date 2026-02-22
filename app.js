@@ -1,7 +1,7 @@
 const EXAMPLES = buildExamples();
 
 const ROLE_STYLES = {
-  pivot: { text: 'pivot', color: '#f5e61a', bar: 'rgba(245, 230, 26, 0.92)', priority: 100 },
+  pivot: { text: 'pivot', color: '#ff4b78', bar: 'rgba(255, 75, 120, 0.92)', priority: 100 },
   current: { text: 'current', color: '#13d8ff', bar: 'rgba(19, 216, 255, 0.9)', priority: 90 },
   i: { text: 'i', color: '#ff4b78', bar: 'rgba(255, 75, 120, 0.92)', priority: 95 },
   j: { text: 'j', color: '#8c7dff', bar: 'rgba(140, 125, 255, 0.92)', priority: 94 },
@@ -47,6 +47,8 @@ const refs = {
   volumeInput: document.getElementById('volumeInput'),
   volumeValue: document.getElementById('volumeValue'),
   soundToggle: document.getElementById('soundToggle'),
+  readFlashToggle: document.getElementById('readFlashToggle'),
+  roleReadout: document.getElementById('roleReadout'),
   traceBtn: document.getElementById('traceBtn'),
   playPauseBtn: document.getElementById('playPauseBtn'),
   stepBtn: document.getElementById('stepBtn'),
@@ -73,6 +75,8 @@ const state = {
   activeRequestId: 0,
   tracing: false,
   traceMetrics: null,
+  showReadFlashes: false,
+  roleReadoutSignature: '',
   canvasSize: { width: 0, height: 0, dpr: 1 },
   lastFrameTs: performance.now(),
 };
@@ -85,6 +89,7 @@ class SoundEngine {
     this.volume = 0.24;
     this.lastWriteAt = 0;
     this.lastReadAt = 0;
+    this.lastMarkerAt = 0;
   }
 
   async prime() {
@@ -114,14 +119,17 @@ class SoundEngine {
     }
   }
 
-  ping({ value, maxValue, kind }) {
+  ping({ value, maxValue, kind, label }) {
     if (!this.enabled || !this.ctx || !this.master) return;
 
     const now = performance.now();
-    const minGap = kind === 'write' ? 10 : 28;
+    const minGap = kind === 'write' ? 10 : kind === 'marker' ? 38 : 28;
     if (kind === 'write') {
       if (now - this.lastWriteAt < minGap) return;
       this.lastWriteAt = now;
+    } else if (kind === 'marker') {
+      if (now - this.lastMarkerAt < minGap) return;
+      this.lastMarkerAt = now;
     } else {
       if (now - this.lastReadAt < minGap) return;
       this.lastReadAt = now;
@@ -134,11 +142,19 @@ class SoundEngine {
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    const duration = kind === 'write' ? 0.045 : 0.02;
+    const duration = kind === 'write' ? 0.045 : kind === 'marker' ? 0.03 : 0.02;
 
-    osc.type = kind === 'write' ? 'triangle' : 'sine';
-    osc.frequency.setValueAtTime(freq, t);
-    gain.gain.setValueAtTime(kind === 'write' ? 0.15 : 0.045, t);
+    osc.type = kind === 'write' ? 'triangle' : kind === 'marker' ? 'square' : 'sine';
+    const markerBoost =
+      kind === 'marker'
+        ? label === 'pivot' || label === 'split'
+          ? 170
+          : label === 'i' || label === 'j'
+            ? 110
+            : 70
+        : 0;
+    osc.frequency.setValueAtTime(freq + markerBoost, t);
+    gain.gain.setValueAtTime(kind === 'write' ? 0.15 : kind === 'marker' ? 0.04 : 0.045, t);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
 
     osc.connect(gain);
@@ -229,6 +245,9 @@ function bindEvents() {
   refs.soundToggle.addEventListener('change', () => {
     sound.setEnabled(refs.soundToggle.checked);
   });
+  refs.readFlashToggle?.addEventListener('change', () => {
+    state.showReadFlashes = !!refs.readFlashToggle.checked;
+  });
 
   refs.traceBtn.addEventListener('click', async () => {
     await sound.prime();
@@ -299,14 +318,19 @@ function bindEvents() {
 
   window.addEventListener('resize', resizeCanvasIfNeeded);
   window.addEventListener('beforeunload', () => cleanupWorker());
+  window.addEventListener('pointerdown', () => {
+    void sound.prime();
+  });
 
   sound.setEnabled(refs.soundToggle.checked);
   sound.setVolume(Number(refs.volumeInput.value));
+  state.showReadFlashes = !!refs.readFlashToggle?.checked;
+  updateRoleReadout();
 }
 
 function updateSliderLabels() {
   refs.sizeValue.textContent = `${refs.sizeInput.value}`;
-  refs.speedValue.textContent = `${refs.speedInput.value} ops/s`;
+  refs.speedValue.textContent = `${getPlaybackOpsPerSecond()} ops/s`;
   refs.volumeValue.textContent = `${refs.volumeInput.value}%`;
 }
 
@@ -567,7 +591,9 @@ function applyOperation(op) {
   switch (op.type) {
     case 'read': {
       const index = Number(op.index);
-      markIndex(index, 'read', 0.16);
+      if (state.showReadFlashes) {
+        markIndex(index, 'read', 0.12);
+      }
       const value = state.displayArray[index];
       sound.ping({ value, maxValue: getMaxArrayValue(state.displayArray), kind: 'read' });
       break;
@@ -589,10 +615,19 @@ function applyOperation(op) {
       const indices = Array.isArray(op.indices) ? op.indices : [];
       for (const idx of indices) {
         const index = Number(idx);
-        const flashKind = label === 'swap' ? 'write' : label === 'pivot' ? 'role' : 'read';
-        markIndex(index, flashKind, flashKind === 'write' ? 0.26 : 0.2);
-        if (shouldTrackRoleLabel(label)) {
+        const trackedRole = shouldTrackRoleLabel(label);
+        const flashKind = label === 'swap' ? 'write' : trackedRole ? 'role' : state.showReadFlashes ? 'read' : null;
+        if (flashKind) {
+          markIndex(index, flashKind, flashKind === 'write' ? 0.26 : flashKind === 'role' ? 0.3 : 0.14);
+        }
+        if (trackedRole) {
           setRoleMark(label, index, roleTtlForLabel(label));
+          sound.ping({
+            value: state.displayArray[index],
+            maxValue: getMaxArrayValue(state.displayArray),
+            kind: 'marker',
+            label,
+          });
         }
       }
       break;
@@ -634,6 +669,7 @@ function setRoleMark(label, index, ttl) {
     color: style.color,
     priority: style.priority,
   });
+  updateRoleReadout();
 }
 
 function roleTtlForLabel(label) {
@@ -673,7 +709,7 @@ function frameLoop(timestamp) {
   state.lastFrameTs = timestamp;
 
   if (state.playing && state.ops.length) {
-    const opsPerSecond = Number(refs.speedInput.value) || 0;
+    const opsPerSecond = getPlaybackOpsPerSecond();
     state.opAccumulator += dt * opsPerSecond;
     const batch = Math.min(4000, Math.floor(state.opAccumulator));
     if (batch > 0) {
@@ -683,6 +719,7 @@ function frameLoop(timestamp) {
   }
 
   decayVisualMarkers(dt);
+  updateRoleReadout();
   drawCanvas();
   requestAnimationFrame(frameLoop);
 }
@@ -848,13 +885,13 @@ function drawRoleCallouts(ctx, layout, rolesByIndex) {
   }
 
   all.sort((a, b) => a.bar.cx - b.bar.cx);
-  const maxLabels = layout.bars.length > 80 ? 6 : 18;
+  const maxLabels = layout.bars.length > 80 ? 4 : 10;
   let rendered = 0;
   const lanes = [];
 
   for (const item of all) {
     if (rendered >= maxLabels) break;
-    for (const role of item.roles) {
+    for (const role of item.roles.filter((entry) => entry.style.priority >= 80).slice(0, 1)) {
       if (rendered >= maxLabels) break;
       const text = getRoleStyle(role.label).text;
       const paddingX = 6;
@@ -873,6 +910,12 @@ function drawRoleCallouts(ctx, layout, rolesByIndex) {
       const baseY = Math.max(34, item.bar.y - 10 - lane * 20);
       const lineY = Math.min(item.bar.y - 1, layout.height - layout.padBottom - item.bar.h);
 
+      if (role.label === 'pivot') {
+        drawPivotArrowCallout(ctx, item.bar.cx, lineY, x, baseY, tagW, tagH, text, role.color);
+        rendered += 1;
+        continue;
+      }
+
       ctx.strokeStyle = `${role.color}aa`;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -889,6 +932,33 @@ function drawRoleCallouts(ctx, layout, rolesByIndex) {
       rendered += 1;
     }
   }
+}
+
+function drawPivotArrowCallout(ctx, barX, barTopY, tagX, tagY, tagW, tagH, text, color) {
+  const shaftBottomY = Math.max(14, barTopY - 3);
+  const shaftTopY = tagY + tagH;
+
+  ctx.strokeStyle = `${color}dd`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(barX, shaftTopY);
+  ctx.lineTo(barX, shaftBottomY);
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(barX, barTopY - 1);
+  ctx.lineTo(barX - 5, shaftBottomY - 1);
+  ctx.lineTo(barX + 5, shaftBottomY - 1);
+  ctx.closePath();
+  ctx.fill();
+
+  roundedRect(ctx, tagX, tagY, tagW, tagH, 6);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.fillStyle = 'rgba(5, 7, 11, 0.96)';
+  ctx.textAlign = 'left';
+  ctx.fillText(text, tagX + 6, tagY + 12);
 }
 
 function drawCanvasBackground(ctx, width, height) {
@@ -1024,6 +1094,62 @@ function updateControlState() {
   refs.traceBtn.disabled = state.tracing;
   refs.stepBtn.disabled = state.tracing;
   refs.resetBtn.disabled = state.tracing || (!state.ops.length && !state.baseArray.length);
+}
+
+function getPlaybackOpsPerSecond() {
+  const slider = clamp(Number(refs.speedInput?.value ?? 0), 0, 100);
+  const t = slider / 100;
+  return Math.max(1, Math.round(1 + Math.pow(t, 4) * 2399));
+}
+
+function updateRoleReadout() {
+  if (!refs.roleReadout) return;
+  const markers = Array.from(state.roleMarks.values())
+    .filter((marker) => marker.ttl > 0)
+    .sort((a, b) => b.priority - a.priority || String(a.label).localeCompare(String(b.label)))
+    .slice(0, 8);
+
+  const signature = markers
+    .map((marker) => `${marker.label}:${marker.index}:${Math.round(marker.ttl * 10)}`)
+    .join('|');
+
+  if (!markers.length && state.roleReadoutSignature === '__empty__') {
+    return;
+  }
+  if (markers.length && signature === state.roleReadoutSignature) {
+    return;
+  }
+
+  refs.roleReadout.innerHTML = '';
+  if (!markers.length) {
+    state.roleReadoutSignature = '__empty__';
+    refs.roleReadout.classList.add('is-empty');
+    refs.roleReadout.textContent = 'Pointer readout: waiting for pivot/current/i/j markers...';
+    return;
+  }
+
+  state.roleReadoutSignature = signature;
+  refs.roleReadout.classList.remove('is-empty');
+  for (const marker of markers) {
+    const style = getRoleStyle(marker.label);
+    const chip = document.createElement('span');
+    chip.className = 'role-chip';
+    chip.style.borderColor = `${style.color}44`;
+    chip.style.boxShadow = `inset 0 0 0 1px ${style.color}22`;
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'role-chip-label';
+    labelEl.style.color = style.color;
+    labelEl.textContent = style.text;
+
+    const metaEl = document.createElement('span');
+    metaEl.className = 'role-chip-meta';
+    const value = state.displayArray[marker.index];
+    metaEl.textContent = `#${marker.index}${Number.isFinite(value) ? ` = ${value}` : ''}`;
+
+    chip.append(labelEl, metaEl);
+    refs.roleReadout.append(chip);
+  }
 }
 
 function getCurrentPreset() {
