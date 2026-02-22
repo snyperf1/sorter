@@ -1,4 +1,4 @@
-const DEFAULT_MAX_OPS = 120000;
+const DEFAULT_MAX_OPS = 300000;
 
 self.onmessage = (event) => {
   const data = event.data || {};
@@ -25,9 +25,22 @@ self.onmessage = (event) => {
       if (ops.length >= maxOps) {
         throw new Error(`Operation limit exceeded (${maxOps.toLocaleString()}). Try a smaller array or simpler trace.`);
       }
+      const prev = ops[ops.length - 1];
       if (op.type === 'read') {
-        const prev = ops[ops.length - 1];
         if (prev && prev.type === 'read' && prev.index === op.index) {
+          return;
+        }
+      }
+      if (op.type === 'mark') {
+        if (
+          prev &&
+          prev.type === 'mark' &&
+          prev.label === op.label &&
+          Array.isArray(prev.indices) &&
+          Array.isArray(op.indices) &&
+          prev.indices.length === op.indices.length &&
+          prev.indices.every((value, index) => value === op.indices[index])
+        ) {
           return;
         }
       }
@@ -81,6 +94,14 @@ self.onmessage = (event) => {
       mark(indices, label = 'mark') {
         const list = Array.isArray(indices) ? indices.map(Number) : [Number(indices)];
         pushOp({ type: 'mark', indices: list, label: String(label) });
+      },
+      range(start, end, label = 'range') {
+        pushOp({
+          type: 'range',
+          start: Number(start),
+          end: Number(end),
+          label: String(label),
+        });
       },
       read(i) {
         return arrProxy[Number(i)];

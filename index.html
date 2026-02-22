@@ -20,6 +20,11 @@
   <body>
     <div class="background-grid" aria-hidden="true"></div>
     <main class="app-shell">
+      <nav class="panel tool-nav" aria-label="tool pages">
+        <a class="tool-link is-active" href="./index.html">Sorting Visualizer</a>
+        <a class="tool-link" href="./maze.html">Maze Pathfinding</a>
+      </nav>
+
       <header class="panel hero-panel">
         <div>
           <p class="eyebrow">sorter.kmshri.com</p>
@@ -64,6 +69,7 @@
             <div class="legend-item"><span class="swatch swatch-default"></span>Idle bars</div>
             <div class="legend-item"><span class="swatch swatch-read"></span>Reads</div>
             <div class="legend-item"><span class="swatch swatch-write"></span>Writes / swaps</div>
+            <div class="legend-item"><span class="swatch swatch-pivot"></span>Pivot / pointers</div>
             <div class="legend-item"><span class="swatch swatch-done"></span>Sorted finish</div>
           </div>
           <div id="traceInfo" class="trace-info">

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maze Pathfinding Lab</title>
+    <meta
+      name="description"
+      content="Generate mazes and visualize BFS, DFS, Dijkstra, and A* pathfinding algorithms."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./maze.js" defer></script>
+  </head>
+  <body>
+    <div class="background-grid" aria-hidden="true"></div>
+    <main class="app-shell">
+      <nav class="panel tool-nav" aria-label="tool pages">
+        <a class="tool-link" href="./index.html">Sorting Visualizer</a>
+        <a class="tool-link is-active" href="./maze.html">Maze Pathfinding</a>
+      </nav>
+
+      <header class="panel hero-panel">
+        <div>
+          <p class="eyebrow">sorter.kmshri.com / maze</p>
+          <h1 id="mazeTitle">Maze Pathfinding Lab</h1>
+          <p class="hero-description">
+            Generate a maze, draw walls, and watch BFS, DFS, Dijkstra, or A* search expand the frontier and reconstruct the shortest path.
+          </p>
+        </div>
+        <div class="complexity-strip" aria-label="pathfinding info">
+          <div class="complexity-chip">
+            <span>Mode</span>
+            <strong id="mazeModeText">Grid + Playback Trace</strong>
+          </div>
+          <div class="complexity-chip">
+            <span>Status</span>
+            <strong id="mazeStatusText">Idle</strong>
+          </div>
+          <div class="complexity-chip">
+            <span>Metrics</span>
+            <strong id="mazeMetricsText">No run yet</strong>
+          </div>
+        </div>
+      </header>
+
+      <section class="maze-grid" aria-label="maze pathfinding workspace">
+        <section class="panel maze-visual-panel" aria-labelledby="mazeCanvasHeading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Visualizer</p>
+              <h2 id="mazeCanvasHeading">Maze + Path Playback</h2>
+            </div>
+            <div class="meta-row">
+              <span id="mazeRunMeta" class="meta-pill">No trace yet</span>
+            </div>
+          </div>
+          <div class="maze-canvas-wrap">
+            <canvas id="mazeCanvas" aria-label="Maze grid canvas"></canvas>
+          </div>
+          <div class="legend-row" aria-label="maze legend">
+            <div class="legend-item"><span class="swatch maze-swatch-wall"></span>Wall</div>
+            <div class="legend-item"><span class="swatch maze-swatch-frontier"></span>Frontier</div>
+            <div class="legend-item"><span class="swatch maze-swatch-visited"></span>Visited</div>
+            <div class="legend-item"><span class="swatch maze-swatch-path"></span>Final path</div>
+            <div class="legend-item"><span class="swatch maze-swatch-start"></span>Start / Goal</div>
+          </div>
+          <div id="mazeInfoText" class="trace-info">
+            Click/drag to draw walls. Use the mode buttons to move the start/goal.
+          </div>
+        </section>
+
+        <section class="panel maze-controls-panel" aria-labelledby="mazeControlsHeading">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Controls</p>
+              <h2 id="mazeControlsHeading">Maze Runner</h2>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="pathAlgoSelect">Pathfinding algorithm</label>
+            <select id="pathAlgoSelect">
+              <option value="astar">A* (recommended)</option>
+              <option value="dijkstra">Dijkstra</option>
+              <option value="bfs">Breadth-First Search</option>
+              <option value="dfs">Depth-First Search</option>
+            </select>
+          </div>
+
+          <div class="control-group split-grid">
+            <div>
+              <label for="mazeSizeInput">Grid size</label>
+              <div class="inline-controls tight">
+                <input id="mazeSizeInput" type="range" min="11" max="41" step="2" value="25" />
+                <span id="mazeSizeValue" class="inline-value">25x25</span>
+              </div>
+            </div>
+            <div>
+              <label for="mazeSpeedInput">Playback speed</label>
+              <div class="inline-controls tight">
+                <input id="mazeSpeedInput" type="range" min="20" max="1600" step="10" value="320" />
+                <span id="mazeSpeedValue" class="inline-value">320/s</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>Maze generation</label>
+            <div class="button-grid maze-button-grid compact-grid">
+              <button id="mazeGenerateBtn" class="btn btn-primary" type="button">Generate Maze</button>
+              <button id="mazeRandomWallsBtn" class="btn btn-secondary" type="button">Random Walls</button>
+              <button id="mazeClearWallsBtn" class="btn btn-ghost" type="button">Clear Walls</button>
+              <button id="mazeResetSearchBtn" class="btn btn-ghost" type="button">Reset Search</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>Edit mode</label>
+            <div class="mode-grid" role="group" aria-label="maze edit mode">
+              <button id="modeWallBtn" class="btn btn-secondary mode-btn is-selected" type="button">Draw Walls</button>
+              <button id="modeEraseBtn" class="btn btn-ghost mode-btn" type="button">Erase</button>
+              <button id="modeStartBtn" class="btn btn-ghost mode-btn" type="button">Set Start</button>
+              <button id="modeGoalBtn" class="btn btn-ghost mode-btn" type="button">Set Goal</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>Playback</label>
+            <div class="button-grid maze-button-grid">
+              <button id="mazeSolveBtn" class="btn btn-primary" type="button">Solve + Play</button>
+              <button id="mazePlayPauseBtn" class="btn btn-secondary" type="button">Play</button>
+              <button id="mazeStepBtn" class="btn btn-ghost" type="button">Step</button>
+              <button id="mazeClearTraceBtn" class="btn btn-ghost" type="button">Clear Trace</button>
+            </div>
+          </div>
+
+          <div id="mazeErrorBox" class="error-box is-hidden" role="alert"></div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
